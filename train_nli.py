@@ -31,6 +31,8 @@ parser.add_argument("--nlipath", type=str, default='dataset/SNLI/', help="NLI da
 parser.add_argument("--outputdir", type=str, default='savedir/', help="Output directory")
 parser.add_argument("--outputmodelname", type=str, default='model.pickle')
 
+# glovec
+parser.add_argument("--word_emb_dim",type=int, default=100)
 
 # training
 parser.add_argument("--n_epochs", type=int, default=20)
@@ -91,7 +93,7 @@ for split in ['s1', 's2']:
             [word for word in sent.split() if word in word_vec] +
             ['</s>'] for sent in eval(data_type)[split]])
 
-params.word_emb_dim = 100
+# params.word_emb_dim = 100
 
 
 """
