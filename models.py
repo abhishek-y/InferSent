@@ -31,7 +31,7 @@ class InferSent(nn.Module):
         self.dpout_model = config['dpout_model']
         self.version = 1 if 'version' not in config else config['version']
 
-        self.enc_lstm = nn.LSTM(self.word_emb_dim, self.enc_lstm_dim, 1,
+        self.enc_lstm = nn.LSTM(self.word_emb_dim, self.enc_lstm_dim, 2,
                                 bidirectional=True, dropout=self.dpout_model)
 
         assert self.version in [1, 2]
@@ -48,7 +48,8 @@ class InferSent(nn.Module):
 
     def is_cuda(self):
         # either all weights are on cpu or they are on gpu
-        return 'cuda' in str(type(self.enc_lstm.bias_hh_l0.data))
+#         return 'cuda' in str(type(self.enc_lstm.bias_hh_l0.data))
+        return True
 
     def forward(self, sent_tuple):
         # sent_len: [max_len, ..., min_len] (bsize)
@@ -812,6 +813,15 @@ class NLINet(nn.Module):
                 nn.Linear(self.fc_dim, self.fc_dim),
                 nn.Tanh(),
                 nn.Dropout(p=self.dpout_fc),
+                nn.Linear(self.fc_dim, self.fc_dim),
+                nn.Tanh(),
+                nn.Dropout(p=self.dpout_fc),
+                nn.Linear(self.fc_dim, self.fc_dim),
+                nn.Tanh(),
+#                 nn.Dropout(p=self.dpout_fc),
+#                 nn.Linear(self.fc_dim, self.fc_dim),
+#                 nn.Tanh(),
+                nn.Dropout(p=self.dpout_fc),
                 nn.Linear(self.fc_dim, self.n_classes),
                 )
         else:
@@ -826,7 +836,8 @@ class NLINet(nn.Module):
         u = self.encoder(s1)
         v = self.encoder(s2)
 
-        features = torch.cat((u, v, torch.abs(u-v), u*v), 1)
+#         features = torch.cat((u, v, torch.abs(u-v), u*v), 1)
+        features = torch.cat((torch.abs(u-v),u*v,torch.abs(u-v),u*v),1)
         output = self.classifier(features)
         return output
 

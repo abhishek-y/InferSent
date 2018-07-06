@@ -26,6 +26,7 @@ W2V_PATH = "dataset/GloVe/glove.840B.300d.txt"
 
 parser = argparse.ArgumentParser(description='NLI training')
 # paths
+parser.add_argument("--glovec_path",type=str, default='/mnt/data/abhishek.y/Datasets/token_vec_all_30k_num_100d.txt')
 parser.add_argument("--nlipath", type=str, default='dataset/SNLI/', help="NLI data path (SNLI or MultiNLI)")
 parser.add_argument("--outputdir", type=str, default='savedir/', help="Output directory")
 parser.add_argument("--outputmodelname", type=str, default='model.pickle')
@@ -64,7 +65,10 @@ torch.cuda.set_device(params.gpu_id)
 # print parameters passed, and all parameters
 print('\ntogrep : {0}\n'.format(sys.argv[1:]))
 print(params)
-
+"""
+GLOVEC
+"""
+W2V_PATH = params.glovec_path
 
 """
 SEED
@@ -87,7 +91,7 @@ for split in ['s1', 's2']:
             [word for word in sent.split() if word in word_vec] +
             ['</s>'] for sent in eval(data_type)[split]])
 
-params.word_emb_dim = 300
+params.word_emb_dim = 100
 
 
 """
@@ -121,7 +125,8 @@ nli_net = NLINet(config_nli_model)
 print(nli_net)
 
 # loss
-weight = torch.FloatTensor(params.n_classes).fill_(1)
+# weight = torch.FloatTensor(params.n_classes).fill_(1)
+weight = torch.FloatTensor([1.,4.])
 loss_fn = nn.CrossEntropyLoss(weight=weight)
 loss_fn.size_average = False
 
@@ -290,13 +295,15 @@ while not stop_training and epoch <= params.n_epochs:
     train_acc = trainepoch(epoch)
     eval_acc = evaluate(epoch, 'valid')
     epoch += 1
+    torch.save(nli_net.encoder.state_dict(),os.path.join(params.outputdir, params.outputmodelname + '.encoder'+str(epoch-1)))
+    print("------------------Model saved------------")
 
 # Run best model on test set.
-nli_net.load_state_dict(os.path.join(params.outputdir, params.outputmodelname))
+# nli_net.load_state_dict(os.path.join(params.outputdir, params.outputmodelname))
 
-print('\nTEST : Epoch {0}'.format(epoch))
-evaluate(1e6, 'valid', True)
-evaluate(0, 'test', True)
+# print('\nTEST : Epoch {0}'.format(epoch))
+# evaluate(1e6, 'valid', True)
+# evaluate(0, 'test', True)
 
 # Save encoder instead of full model
-torch.save(nli_net.encoder.state_dict(), os.path.join(params.outputdir, params.outputmodelname + '.encoder.pkl'))
+# torch.save(nli_net.encoder.state_dict(), os.path.join(params.outputdir, params.outputmodelname + '.encoder.pkl'))
