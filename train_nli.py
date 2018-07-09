@@ -21,15 +21,16 @@ from mutils import get_optimizer
 from models import NLINet
 
 
-W2V_PATH = "dataset/GloVe/glove.840B.300d.txt"
+W2V_PATH = "/mnt/data/abhishek.y/Datasets/token_vec_all_big_30k_num_100d.txt"
 
 
 parser = argparse.ArgumentParser(description='NLI training')
 # paths
 parser.add_argument("--glovec_path",type=str, default='/mnt/data/abhishek.y/Datasets/token_vec_all_30k_num_100d.txt')
-parser.add_argument("--nlipath", type=str, default='dataset/SNLI/', help="NLI data path (SNLI or MultiNLI)")
-parser.add_argument("--outputdir", type=str, default='savedir/', help="Output directory")
-parser.add_argument("--outputmodelname", type=str, default='model.pickle')
+parser.add_argument("--nlipath", type=str, default="mydataset/all_num_30k_big/", help="NLI data path (SNLI or MultiNLI)")
+parser.add_argument("--outputdir", type=str, default='savedir_all_big_num_eudot/encoder_steps/test1/', help="Output directory")
+parser.add_argument("--outputmodelname", type=str, default='all_big_num_eudot.model.pickle')
+parser.add_argument("--cont_path", type=str, default='savedir_all_big_num_eudot/encoder_steps/test1/all_big_num_eudot.model.pickle', help="continue prev model path")
 
 # glovec
 parser.add_argument("--word_emb_dim",type=int, default=100)
@@ -38,25 +39,26 @@ parser.add_argument("--word_emb_dim",type=int, default=100)
 parser.add_argument("--n_epochs", type=int, default=20)
 parser.add_argument("--batch_size", type=int, default=64)
 parser.add_argument("--dpout_model", type=float, default=0., help="encoder dropout")
-parser.add_argument("--dpout_fc", type=float, default=0., help="classifier dropout")
-parser.add_argument("--nonlinear_fc", type=float, default=0, help="use nonlinearity in fc")
+parser.add_argument("--dpout_fc", type=float, default=0.3, help="classifier dropout")
+parser.add_argument("--nonlinear_fc", type=float, default=1, help="use nonlinearity in fc")
 parser.add_argument("--optimizer", type=str, default="sgd,lr=0.1", help="adam or sgd,lr=0.1")
 parser.add_argument("--lrshrink", type=float, default=5, help="shrink factor for sgd")
-parser.add_argument("--decay", type=float, default=0.99, help="lr decay")
-parser.add_argument("--minlr", type=float, default=1e-5, help="minimum lr")
+parser.add_argument("--decay", type=float, default=0.5, help="lr decay")
+parser.add_argument("--minlr", type=float, default=1e-6, help="minimum lr")
 parser.add_argument("--max_norm", type=float, default=5., help="max norm (grad clipping)")
 
 # model
-parser.add_argument("--encoder_type", type=str, default='InferSentV1', help="see list of encoders")
-parser.add_argument("--enc_lstm_dim", type=int, default=2048, help="encoder nhid dimension")
+parser.add_argument("--encoder_type", type=str, default='InferSent', help="see list of encoders")
+parser.add_argument("--enc_lstm_dim", type=int, default=512, help="encoder nhid dimension")
 parser.add_argument("--n_enc_layers", type=int, default=1, help="encoder num layers")
-parser.add_argument("--fc_dim", type=int, default=512, help="nhid of fc layers")
-parser.add_argument("--n_classes", type=int, default=3, help="entailment/neutral/contradiction")
+parser.add_argument("--fc_dim", type=int, default=256, help="nhid of fc layers")
+parser.add_argument("--n_classes", type=int, default=2, help="entailment/neutral/contradiction")
 parser.add_argument("--pool_type", type=str, default='max', help="max or mean")
 
 # gpu
-parser.add_argument("--gpu_id", type=int, default=3, help="GPU ID")
+parser.add_argument("--gpu_id", type=int, default=-1, help="GPU ID")
 parser.add_argument("--seed", type=int, default=1234, help="seed")
+parser.add_argument("--cont", type=int, default=0, help="continue prev model or start new")
 
 
 params, _ = parser.parse_known_args()
@@ -123,7 +125,12 @@ encoder_types = ['InferSent', 'BLSTMprojEncoder', 'BGRUlastEncoder',
                  'InnerAttentionNAACLEncoder', 'ConvNetEncoder', 'LSTMEncoder']
 assert params.encoder_type in encoder_types, "encoder_type must be in " + \
                                              str(encoder_types)
-nli_net = NLINet(config_nli_model)
+# nli_net = NLINet(config_nli_model)
+
+if params.cont:
+    nli_net = torch.load(params.cont_path)
+else:
+    nli_net = NLINet(config_nli_model)
 print(nli_net)
 
 # loss
@@ -218,15 +225,15 @@ def trainepoch(epoch):
 
         if len(all_costs) == 100:
             logs.append('{0} ; loss {1} ; sentence/s {2} ; words/s {3} ; accuracy train : {4}'.format(
-                            stidx, round(np.mean(all_costs), 2),
+                            stidx, np.round(np.mean(all_costs), 2),
                             int(len(all_costs) * params.batch_size / (time.time() - last_time)),
                             int(words_count * 1.0 / (time.time() - last_time)),
-                            round(100.*correct/(stidx+k), 2)))
+                            np.round(100.*correct/(stidx+k), 2)))
             print(logs[-1])
             last_time = time.time()
             words_count = 0
             all_costs = []
-    train_acc = round(100 * correct/len(s1), 2)
+    train_acc = np.round(100 * correct/len(s1), 2)
     print('results : epoch {0} ; mean accuracy train : {1}'
           .format(epoch, train_acc))
     return train_acc
@@ -258,7 +265,7 @@ def evaluate(epoch, eval_type='valid', final_eval=False):
         correct += pred.long().eq(tgt_batch.data.long()).cpu().sum()
 
     # save model
-    eval_acc = round(100 * correct / len(s1), 2)
+    eval_acc = np.round(100 * correct / len(s1), 2)
     if final_eval:
         print('finalgrep : accuracy {0} : {1}'.format(eval_type, eval_acc))
     else:
