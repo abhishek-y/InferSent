@@ -302,6 +302,7 @@ epoch = 1
 
 while not stop_training and epoch <= params.n_epochs:
     train_acc = trainepoch(epoch)
+    evaluate(epoch, 'test')
     eval_acc = evaluate(epoch, 'valid')
     epoch += 1
     torch.save(nli_net.encoder.state_dict(),os.path.join(params.outputdir, params.outputmodelname + '.encoder'+str(epoch-1)))
